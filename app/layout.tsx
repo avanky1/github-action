@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Next.js on EC2',
-  description: 'Deployed with GitHub Actions',
+  title: 'Avanis v1',
+  description: 'Avanis v1 — deployed with GitHub Actions',
 };
 
 export default function RootLayout({
