@@ -29,11 +29,13 @@ jobs:
       - name: Build (runs on the GitHub runner, not on EC2)
         run: npm run build
 
+      - name: Set release id
+        run: echo "RELEASE_ID=$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
       - name: Assemble standalone bundle
         run: |
           cp -r public .next/standalone/ 2>/dev/null || true
           cp -r .next/static .next/standalone/.next/
-          cp ecosystem.config.js .next/standalone/
 
       - name: Configure SSH
         run: |
@@ -42,22 +44,24 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Sync build to EC2
+      - name: Upload release to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
-          APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          APP_ROOT: ${{ secrets.EC2_APP_DIR }}
         run: |
-          ssh "$EC2_USER@$EC2_HOST" "mkdir -p '$APP_DIR'"
-          rsync -az --delete .next/standalone/ "$EC2_USER@$EC2_HOST:$APP_DIR/"
+          ssh "$EC2_USER@$EC2_HOST" "mkdir -p '$APP_ROOT/releases'"
+          rsync -az --delete .next/standalone/ "$EC2_USER@$EC2_HOST:$APP_ROOT/releases/$RELEASE_ID/"
+          scp ecosystem.config.js "$EC2_USER@$EC2_HOST:$APP_ROOT/ecosystem.config.js"
+          scp scripts/deploy.sh "$EC2_USER@$EC2_HOST:/tmp/deploy.sh"
 
-      - name: Reload app with PM2
+      - name: Activate release (health check + auto-rollback)
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
-          APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          APP_ROOT: ${{ secrets.EC2_APP_DIR }}
         run: |
-          ssh "$EC2_USER@$EC2_HOST" "cd '$APP_DIR' && pm2 startOrReload ecosystem.config.js --update-env && pm2 save"
+          ssh "$EC2_USER@$EC2_HOST" "bash /tmp/deploy.sh '$APP_ROOT' '$RELEASE_ID'"
 
       - name: Ensure Nginx is installed
         env:

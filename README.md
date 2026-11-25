@@ -17,12 +17,29 @@ GitHub Actions runner
    ├─ npm ci
    ├─ npm run build            (output: .next/standalone)
    ├─ assemble public + static into standalone/
-   ├─ rsync standalone/ ─────────────► EC2: $APP_DIR
-   └─ ssh "pm2 startOrReload" ───────► reload the app (no build on server)
+   ├─ rsync standalone/ ─────────────► EC2: releases/<release-id>/
+   ├─ ssh deploy.sh ─────────────────► flip `current` symlink, PM2 reload
+   │                                    + health check, auto-rollback on failure
+   └─ (Nginx config synced) ─────────► reverse-proxy mirror1.downly.sbs → :3000
 ```
 
 `next.config.mjs` sets `output: 'standalone'`, which produces a self-contained
 `server.js` plus the minimal `node_modules` it needs.
+
+### Zero-downtime release layout on the server
+
+```
+$APP_DIR/
+  releases/
+    20261125132448-95c8515/   ← each push = a fully-built, immutable release
+    20261125132210-e409978/
+  current -> releases/20261125132448-95c8515   ← atomic symlink (PM2 runs this)
+  ecosystem.config.js
+```
+
+`scripts/deploy.sh` points `current` at the new release, reloads PM2, polls
+`/api/health`, and if it's not healthy **rolls the symlink back** to the
+previous release. Only the last 5 releases are kept (`KEEP_RELEASES`).
 
 ## One-time EC2 setup
 
@@ -113,4 +130,8 @@ sudo certbot --nginx -d mirror1.downly.sbs
 - Health endpoint: `GET /api/health` returns `{ status, uptime, timestamp }`.
 - Port / memory are configured in `ecosystem.config.js`
   (`max_memory_restart: 400M` keeps things safe on a 2 GB box).
-- `rsync --delete` mirrors the build to `EC2_APP_DIR`, so stale files are removed.
+- `rsync --delete` writes each build into its own `releases/<id>/` dir;
+  `scripts/deploy.sh` flips the `current` symlink and keeps the last 5 releases.
+- Failed health check ⇒ automatic rollback to the previous release (CI fails too).
+- The `releases/<id>/` dirs include their own `node_modules`, so each release is
+  self-contained; watch disk on an 8 GB EBS (5 releases is fine).
