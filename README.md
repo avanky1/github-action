@@ -41,6 +41,25 @@ $APP_DIR/
 `/api/health`, and if it's not healthy **rolls the symlink back** to the
 previous release. Only the last 5 releases are kept (`KEEP_RELEASES`).
 
+## Branching & CI flow
+
+Work on a branch, verify via PR, deploy only from `main`:
+
+```
+feature branch (push)  ──► nothing runs (no deploy, no SSH)
+        │
+        └─ open Pull Request ──► CI workflow: npm ci → typecheck → build  (no secrets)
+                  │
+                  └─ merge / push to main ──► Deploy workflow: build → releases → health-gated
+```
+
+- `.github/workflows/ci.yml` runs on **pull requests to `main`** only — a safe
+  "does it compile" gate that never touches EC2 or secrets.
+- `.github/workflows/deploy.yml` runs on **push to `main`** only.
+
+Tip: to truly prevent bad merges, enable branch protection on `main`
+(Settings → Branches) and require the **CI / verify** check to pass before merge.
+
 ## One-time EC2 setup
 
 SSH into the instance and install Node 22 + PM2:
