@@ -60,7 +60,7 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="footer">v1.0.1 · auto-deployed from GitHub Actions</footer>
+      <footer className="footer">v1.0.2 · served via Nginx on mirror1.downly.sbs</footer>
     </main>
   );
 }
