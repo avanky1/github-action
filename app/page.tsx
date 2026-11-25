@@ -24,14 +24,14 @@ export default function Home() {
     <main className="card">
       <div className="badge">
         <span className="dot" />
-        Live on EC2
+        Avanis v1 is live
       </div>
 
-      <h1>Next.js deployed with GitHub Actions</h1>
+      <h1>Avanis v1</h1>
       <p>
-        This app is built inside GitHub Actions and the standalone output is
-        synced to a small EC2 instance. Nothing is compiled on the server, so a
-        1 vCPU / 2 GB box is plenty.
+        Welcome to Avanis v1. This app is built inside GitHub Actions and the
+        standalone output is synced to a small EC2 instance. Nothing is compiled
+        on the server, so a 1 vCPU / 2 GB box is plenty.
       </p>
 
       <div className="steps">
@@ -60,7 +60,7 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="footer">v1.0.3 · worked on master, merged to main to deploy</footer>
+      <footer className="footer">Avanis v1 · deployed via GitHub Actions to EC2</footer>
     </main>
   );
 }
