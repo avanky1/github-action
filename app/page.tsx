@@ -59,6 +59,8 @@ export default function Home() {
           </span>
         )}
       </div>
+
+      <footer className="footer">v1.0.1 · auto-deployed from GitHub Actions</footer>
     </main>
   );
 }
