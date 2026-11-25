@@ -80,6 +80,34 @@ npm run dev          # http://localhost:3000
 npm run build        # verify the production build locally
 ```
 
+## Custom subdomain (mirror1.downly.sbs)
+
+The workflow installs `nginx` (Debian/Ubuntu) and deploys
+`nginx/mirror1.downly.sbs.conf`, which reverse-proxies
+`mirror1.downly.sbs:80` → `127.0.0.1:3000`. Only the app's port 3000 listens
+publicly on the server; Nginx fronts it on port 80.
+
+One-time manual steps (not automatable from CI):
+
+1. **DNS**: at your domain registrar create an `A` record
+   `mirror1` → `<EC2_PUBLIC_IP>` (`54.66.128.241`). Verify:
+   ```bash
+   nslookup mirror1.downly.sbs
+   ```
+2. **Security group**: allow inbound `HTTP (80)` from `0.0.0.0/0`.
+3. Push to `main` (or run the workflow) to install Nginx + deploy the site.
+
+Then browse `http://mirror1.downly.sbs`.
+
+### HTTPS (optional)
+
+After HTTP works, on the server:
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d mirror1.downly.sbs
+```
+
 ## Notes
 
 - Health endpoint: `GET /api/health` returns `{ status, uptime, timestamp }`.
