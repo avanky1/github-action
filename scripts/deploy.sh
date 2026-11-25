@@ -7,6 +7,7 @@ set -euo pipefail
 
 APP_ROOT="${1:?usage: deploy.sh <app_root> <release_id>}"
 RELEASE_ID="${2:?usage: deploy.sh <app_root> <release_id>}"
+APP_NAME="${APP_NAME:-github-ac}"
 KEEP="${KEEP_RELEASES:-5}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/api/health}"
 
@@ -21,11 +22,18 @@ fi
 
 PREV_TARGET="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
 
+# A full delete + start forces PM2 to re-resolve the `current` symlink.
+# `pm2 reload` / `startOrReload` can keep reusing the real path PM2 resolved on
+# the very first start, which makes new releases silently serve old code.
+restart_app() {
+  cd "$APP_ROOT"
+  pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
+  pm2 start ecosystem.config.js --update-env
+}
+
 echo "==> Activating release $RELEASE_ID"
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
-
-cd "$APP_ROOT"
-pm2 startOrReload ecosystem.config.js --update-env
+restart_app
 
 echo "==> Waiting for health: $HEALTH_URL"
 healthy=0
@@ -42,7 +50,7 @@ if [ "$healthy" -ne 1 ]; then
   if [ -n "$PREV_TARGET" ] && [ -d "$PREV_TARGET" ]; then
     echo "==> Rolling back to $PREV_TARGET" >&2
     ln -sfn "$PREV_TARGET" "$CURRENT_LINK"
-    pm2 startOrReload ecosystem.config.js --update-env
+    restart_app
   fi
   exit 1
 fi
